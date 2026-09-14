@@ -89,24 +89,32 @@ router.get('/:id/events', (req: Request, res: Response) => {
 
   let closed = false;
 
-  const unsubscribe = registry.subscribe(run.id, (event) => {
+  // A replayed done/error is history (e.g. the pause before a resume), not
+  // the run ending now — only a live one should close the response.
+  const result = registry.subscribe(run.id, (event, isReplay) => {
     if (closed) return;
     writeSse(res, event);
 
-    if (event.type === 'done' || event.type === 'error') {
+    if (!isReplay && (event.type === 'done' || event.type === 'error')) {
       closed = true;
       res.end();
     }
   });
 
-  if (!unsubscribe) {
+  if (!result) {
+    res.end();
+    return;
+  }
+
+  if (!result.isLive) {
+    closed = true;
     res.end();
     return;
   }
 
   req.on('close', () => {
     closed = true;
-    unsubscribe();
+    result.unsubscribe();
   });
 });
 

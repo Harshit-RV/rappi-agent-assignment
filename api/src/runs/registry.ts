@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { CreateRunInput, PendingResumeState, RunEvent, RunRecord } from './types';
 
-type Subscriber = (event: RunEvent) => void;
+type Subscriber = (event: RunEvent, isReplay: boolean) => void;
 
 const runs = new Map<string, RunRecord>();
 const subscribers = new Map<string, Set<Subscriber>>();
@@ -54,7 +54,7 @@ export function appendEvent(runId: string, event: RunEvent): void {
   const subs = subscribers.get(runId);
   if (!subs) return;
   for (const sub of subs) {
-    sub(event);
+    sub(event, false);
   }
 }
 
@@ -85,24 +85,26 @@ export function markRejected(runId: string): void {
   run.status = 'rejected';
 }
 
+export type SubscribeResult = {
+  unsubscribe: () => void;
+  // False if the run had already ended before subscribing — no live events
+  // are coming, so the replay above is the complete picture.
+  isLive: boolean;
+};
+
 /**
  * Replay every event so far, then deliver live events until the run ends.
- * Returns an unsubscribe function for client disconnects.
  */
-export function subscribe(
-  runId: string,
-  onEvent: Subscriber
-): (() => void) | undefined {
+export function subscribe(runId: string, onEvent: Subscriber): SubscribeResult | undefined {
   const run = runs.get(runId);
   if (!run) return undefined;
 
   for (const event of run.events) {
-    onEvent(event);
+    onEvent(event, true);
   }
 
-  // Already finished before subscribe — nothing live to wait for.
   if (run.status !== 'running') {
-    return () => undefined;
+    return { unsubscribe: () => undefined, isLive: false };
   }
 
   let subs = subscribers.get(runId);
@@ -112,7 +114,5 @@ export function subscribe(
   }
   subs.add(onEvent);
 
-  return () => {
-    subs?.delete(onEvent);
-  };
+  return { unsubscribe: () => subs?.delete(onEvent), isLive: true };
 }
