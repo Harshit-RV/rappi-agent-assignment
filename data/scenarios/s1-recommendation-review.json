@@ -1,0 +1,99 @@
+{
+  "id": "s1-recommendation-review",
+  "name": "Purchase Recommendation Review",
+  "description": "System recommends buying 800 units. Incoming stock, storage, and MOQ/case-pack make that recommendation wrong.",
+  "situation": {
+    "productId": "P-COKE-500",
+    "nodeId": "FC-BLR-01",
+    "recommendedQuantity": 800,
+    "note": "Raised by the nightly replenishment job on a 14-day demand horizon."
+  },
+  "products": [
+    {
+      "productId": "P-COKE-500",
+      "name": "Coca-Cola 500ml PET",
+      "casePack": 24,
+      "unitCost": 22,
+      "shelfLifeDays": 180
+    }
+  ],
+  "nodes": [
+    {
+      "nodeId": "FC-BLR-01",
+      "name": "Bangalore FC 01",
+      "capacityUnits": 1000,
+      "usedUnits": 480
+    }
+  ],
+  "inventory": [
+    {
+      "productId": "P-COKE-500",
+      "nodeId": "FC-BLR-01",
+      "onHand": 120,
+      "reserved": 10,
+      "safetyStock": 50
+    }
+  ],
+  "demandForecasts": [
+    {
+      "productId": "P-COKE-500",
+      "nodeId": "FC-BLR-01",
+      "horizonDays": 14,
+      "forecastUnits": 600,
+      "confidence": 0.78
+    }
+  ],
+  "salesActuals": [
+    {
+      "productId": "P-COKE-500",
+      "nodeId": "FC-BLR-01",
+      "lookbackDays": 14,
+      "soldUnits": 624,
+      "forecastUnitsForSameWindow": 600
+    }
+  ],
+  "suppliers": [
+    {
+      "supplierId": "SUP-VEND-01",
+      "name": "Bharat Beverages Pvt Ltd",
+      "productId": "P-COKE-500",
+      "unitPrice": 22,
+      "moq": 96,
+      "leadTimeDays": 5,
+      "availableAllocation": 5000,
+      "reliabilityScore": 0.95
+    },
+    {
+      "supplierId": "SUP-VEND-02",
+      "name": "Metro Distributors",
+      "productId": "P-COKE-500",
+      "unitPrice": 24.5,
+      "moq": 48,
+      "leadTimeDays": 9,
+      "availableAllocation": 1200,
+      "reliabilityScore": 0.82
+    }
+  ],
+  "purchaseOrders": [
+    {
+      "poId": "PO-4471",
+      "productId": "P-COKE-500",
+      "supplierId": "SUP-VEND-01",
+      "nodeId": "FC-BLR-01",
+      "requestedQty": 400,
+      "confirmedQty": 400,
+      "unitPrice": 22,
+      "status": "CONFIRMED",
+      "expectedArrivalDays": 3
+    }
+  ],
+  "budgets": [
+    {
+      "periodId": "FY26-Q3",
+      "currency": "INR",
+      "allocated": 50000,
+      "committed": 8800,
+      "spent": 0
+    }
+  ]
+}
