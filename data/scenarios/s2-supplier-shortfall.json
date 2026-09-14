@@ -1,0 +1,99 @@
+{
+  "id": "s2-supplier-shortfall",
+  "name": "Supplier Cannot Fulfil the Purchase",
+  "description": "A 500-unit PO was placed, but the supplier can only confirm 250. Sourcing the rest from the only alternate supplier would blow the remaining budget — forcing a choice between a smaller top-up, accepting the shortfall, or escalating.",
+  "situation": {
+    "productId": "P-RICE-5KG",
+    "nodeId": "FC-BLR-01",
+    "recommendedQuantity": 500,
+    "note": "PO-9001 was placed for 500 units. The supplier has just confirmed only 250 are available right now."
+  },
+  "products": [
+    {
+      "productId": "P-RICE-5KG",
+      "name": "Basmati Rice 5kg Bag",
+      "casePack": 10,
+      "unitCost": 420,
+      "shelfLifeDays": 365
+    }
+  ],
+  "nodes": [
+    {
+      "nodeId": "FC-BLR-01",
+      "name": "Bangalore FC 01",
+      "capacityUnits": 1000,
+      "usedUnits": 300
+    }
+  ],
+  "inventory": [
+    {
+      "productId": "P-RICE-5KG",
+      "nodeId": "FC-BLR-01",
+      "onHand": 80,
+      "reserved": 20,
+      "safetyStock": 60
+    }
+  ],
+  "demandForecasts": [
+    {
+      "productId": "P-RICE-5KG",
+      "nodeId": "FC-BLR-01",
+      "horizonDays": 14,
+      "forecastUnits": 350,
+      "confidence": 0.74
+    }
+  ],
+  "salesActuals": [
+    {
+      "productId": "P-RICE-5KG",
+      "nodeId": "FC-BLR-01",
+      "lookbackDays": 14,
+      "soldUnits": 340,
+      "forecastUnitsForSameWindow": 350
+    }
+  ],
+  "suppliers": [
+    {
+      "supplierId": "SUP-GRAIN-01",
+      "name": "Karnataka Grain Traders",
+      "productId": "P-RICE-5KG",
+      "unitPrice": 420,
+      "moq": 100,
+      "leadTimeDays": 6,
+      "availableAllocation": 250,
+      "reliabilityScore": 0.88
+    },
+    {
+      "supplierId": "SUP-GRAIN-02",
+      "name": "Premium Millers Co",
+      "productId": "P-RICE-5KG",
+      "unitPrice": 610,
+      "moq": 50,
+      "leadTimeDays": 4,
+      "availableAllocation": 400,
+      "reliabilityScore": 0.91
+    }
+  ],
+  "purchaseOrders": [
+    {
+      "poId": "PO-9001",
+      "productId": "P-RICE-5KG",
+      "supplierId": "SUP-GRAIN-01",
+      "nodeId": "FC-BLR-01",
+      "requestedQty": 500,
+      "confirmedQty": 250,
+      "unitPrice": 420,
+      "status": "PARTIALLY_CONFIRMED",
+      "expectedArrivalDays": 6
+    }
+  ],
+  "budgets": [
+    {
+      "periodId": "FY26-Q3",
+      "currency": "INR",
+      "allocated": 150000,
+      "committed": 105000,
+      "spent": 0
+    }
+  ]
+}

@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { getScenario, listScenarios, startRun, subscribeRunEvents } from './api';
+import {
+  getScenario,
+  listScenarios,
+  startRun,
+  submitDecision,
+  subscribeRunEvents,
+} from './api';
 import { RunTrace } from './components/RunTrace';
 import { ScenarioPanel } from './components/ScenarioPanel';
 import type { RunEvent, RunStatus, ScenarioDetail, ScenarioSummary } from './types';
@@ -69,6 +75,40 @@ export default function App() {
     };
   }, []);
 
+  function subscribeTo(id: string, skip = 0) {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = subscribeRunEvents(
+      id,
+      (event) => {
+        setEvents((prev) => [...prev, event]);
+        if (event.type === 'done') {
+          switch (event.summary.stopReason) {
+            case 'AWAITING_APPROVAL':
+              setStatus('awaiting_approval');
+              break;
+            case 'ESCALATED':
+              setStatus('escalated');
+              break;
+            default:
+              setStatus('completed');
+          }
+          unsubscribeRef.current?.();
+          unsubscribeRef.current = null;
+        } else if (event.type === 'error') {
+          setStatus('failed');
+          setError(event.message);
+          unsubscribeRef.current?.();
+          unsubscribeRef.current = null;
+        }
+      },
+      (message) => {
+        setStatus((current) => (current === 'running' ? 'failed' : current));
+        setError(message);
+      },
+      skip
+    );
+  }
+
   async function handleRun() {
     if (!selectedId) return;
     unsubscribeRef.current?.();
@@ -81,30 +121,30 @@ export default function App() {
       const { runId: id } = await startRun(selectedId, extraPrompt);
       setRunId(id);
       setStatus('running');
-
-      unsubscribeRef.current = subscribeRunEvents(
-        id,
-        (event) => {
-          setEvents((prev) => [...prev, event]);
-          if (event.type === 'done') {
-            setStatus('completed');
-            unsubscribeRef.current?.();
-            unsubscribeRef.current = null;
-          } else if (event.type === 'error') {
-            setStatus('failed');
-            setError(event.message);
-            unsubscribeRef.current?.();
-            unsubscribeRef.current = null;
-          }
-        },
-        (message) => {
-          setStatus((current) => (current === 'running' ? 'failed' : current));
-          setError(message);
-        }
-      );
+      subscribeTo(id);
     } catch (err: unknown) {
       setStatus('failed');
       setError(err instanceof Error ? err.message : 'Failed to start run');
+    }
+  }
+
+  async function handleDecision(approved: boolean, reason?: string) {
+    if (!runId) return;
+    setError(null);
+
+    try {
+      await submitDecision(runId, approved, reason);
+      if (approved) {
+        // Run resumes on the same id — reconnect to see it continue, but
+        // skip the events already rendered so the replay of the original
+        // pause doesn't immediately flip status back to awaiting_approval.
+        setStatus('running');
+        subscribeTo(runId, events.length);
+      } else {
+        setStatus('rejected');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to submit decision');
     }
   }
 
@@ -141,7 +181,15 @@ export default function App() {
             void handleRun();
           }}
         />
-        <RunTrace status={status} runId={runId} events={events} error={error} />
+        <RunTrace
+          status={status}
+          runId={runId}
+          events={events}
+          error={error}
+          onDecision={(approved, reason) => {
+            void handleDecision(approved, reason);
+          }}
+        />
       </main>
     </div>
   );

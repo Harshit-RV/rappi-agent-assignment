@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import type { CreateRunInput, RunEvent, RunRecord } from './types';
+import type { CreateRunInput, PendingResumeState, RunEvent, RunRecord } from './types';
 
 type Subscriber = (event: RunEvent) => void;
 
@@ -16,6 +16,7 @@ export function createRun(input: CreateRunInput & { prompt: string }): RunRecord
     events: [],
     summary: null,
     error: null,
+    pendingResume: null,
   };
 
   runs.set(run.id, run);
@@ -34,8 +35,17 @@ export function appendEvent(runId: string, event: RunEvent): void {
   run.events.push(event);
 
   if (event.type === 'done') {
-    run.status = 'completed';
     run.summary = event.summary;
+    switch (event.summary.stopReason) {
+      case 'AWAITING_APPROVAL':
+        run.status = 'awaiting_approval';
+        break;
+      case 'ESCALATED':
+        run.status = 'escalated';
+        break;
+      default:
+        run.status = 'completed';
+    }
   } else if (event.type === 'error') {
     run.status = 'failed';
     run.error = event.message;
@@ -46,6 +56,33 @@ export function appendEvent(runId: string, event: RunEvent): void {
   for (const sub of subs) {
     sub(event);
   }
+}
+
+export function setPendingResume(runId: string, pending: PendingResumeState): void {
+  const run = runs.get(runId);
+  if (!run) return;
+  run.pendingResume = pending;
+}
+
+export function clearPendingResume(runId: string): void {
+  const run = runs.get(runId);
+  if (!run) return;
+  run.pendingResume = null;
+}
+
+export function markRunning(runId: string): void {
+  const run = runs.get(runId);
+  if (!run) return;
+  run.status = 'running';
+  if (!subscribers.has(runId)) {
+    subscribers.set(runId, new Set());
+  }
+}
+
+export function markRejected(runId: string): void {
+  const run = runs.get(runId);
+  if (!run) return;
+  run.status = 'rejected';
 }
 
 /**

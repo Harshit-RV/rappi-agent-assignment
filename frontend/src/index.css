@@ -368,6 +368,24 @@ pre {
   background: #fff5f3;
 }
 
+.status-awaiting_approval {
+  color: var(--warn);
+  border-color: #f0dcb2;
+  background: #fdf6e8;
+}
+
+.status-escalated {
+  color: var(--warn);
+  border-color: #f0dcb2;
+  background: #fdf6e8;
+}
+
+.status-rejected {
+  color: var(--danger);
+  border-color: #f0c2bc;
+  background: #fff5f3;
+}
+
 .run-id {
   font-size: 0.72rem;
   color: var(--muted);
@@ -549,6 +567,125 @@ pre {
 
 .event.assistant {
   border-left: 3px solid #6e7f9a;
+}
+
+.event.approval-request,
+.event.escalation {
+  border-left: 3px solid var(--warn);
+  background: #fdf6e8;
+}
+
+.event.approval-request p,
+.event.escalation p {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.event.approval-decision {
+  border-left: 3px solid var(--muted);
+}
+
+.event.approval-decision.approved {
+  border-left-color: var(--ok);
+}
+
+.event.approval-decision.denied {
+  border-left-color: var(--danger);
+}
+
+.event.approval-decision p {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.approval-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #f0dcb2;
+  background: linear-gradient(180deg, #fdf6e8 0%, #faeed2 100%);
+  animation: rise 0.4s ease-out both;
+}
+
+.approval-panel h3 {
+  margin: 0.3rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.approval-args {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.approval-reason {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+}
+
+.approval-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.approval-panel .field {
+  margin-top: 0.75rem;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.approve-btn,
+.reject-btn {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease;
+}
+
+.approve-btn {
+  background: linear-gradient(180deg, #14926c 0%, var(--accent-deep) 100%);
+  color: #f4fff9;
+}
+
+.reject-btn {
+  background: #fff;
+  border: 1px solid #f0c2bc;
+  color: var(--danger);
+}
+
+.approve-btn:hover,
+.reject-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.escalation-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #f0dcb2;
+  background: linear-gradient(180deg, #fdf6e8 0%, #faeed2 100%);
+  animation: rise 0.4s ease-out both;
+}
+
+.escalation-panel p {
+  margin: 0.35rem 0 0;
+  font-size: 0.92rem;
 }
 
 .decision {

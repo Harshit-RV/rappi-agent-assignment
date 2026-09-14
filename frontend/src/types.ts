@@ -16,11 +16,26 @@ export type ScenarioDetail = ScenarioSummary & {
   state: Record<string, unknown>;
 };
 
+export type PendingApproval = {
+  approvalId: string;
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+  reason: string;
+};
+
+export type Escalation = {
+  reason: string;
+  context?: string;
+};
+
 export type AgentRunSummary = {
   stopReason: string;
   iterations: number;
   durationMs: number;
   finalText: string;
+  pendingApproval?: PendingApproval;
+  escalation?: Escalation;
 };
 
 export type RunEvent =
@@ -35,7 +50,18 @@ export type RunEvent =
       durationMs: number;
     }
   | { type: 'assistant_message'; at: number; text: string }
+  | { type: 'approval_requested'; at: number; pending: PendingApproval }
+  | { type: 'approval_decided'; at: number; approved: boolean; reason?: string }
+  | { type: 'escalation'; at: number; escalation: Escalation }
   | { type: 'done'; at: number; summary: AgentRunSummary }
   | { type: 'error'; at: number; message: string };
 
-export type RunStatus = 'idle' | 'starting' | 'running' | 'completed' | 'failed';
+export type RunStatus =
+  | 'idle'
+  | 'starting'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'awaiting_approval'
+  | 'escalated'
+  | 'rejected';

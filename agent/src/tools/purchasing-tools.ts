@@ -1,4 +1,4 @@
-import { tool } from 'ai';
+import { tool, type ToolApprovalConfiguration, type ToolSet } from 'ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { Store } from 'erp';
@@ -6,6 +6,30 @@ import { createPurchaseOrder, getIncomingConfirmedQty, decideApproval, validateP
 
 function notFound(entity: string, id: string) {
   return { error: `${entity} not found: ${id}` };
+}
+
+// Re-validates the plan before create_purchase_order can execute; anything
+// short of a clean pass routes to 'user-approval' and pauses the run.
+export function createApprovalGate(store: Store): ToolApprovalConfiguration<ToolSet, never> {
+  return {
+    create_purchase_order: ({ productId, nodeId, supplierId, requestedQty }) => {
+      try {
+        const results = validatePlan(store, {
+          productId,
+          nodeId,
+          supplierId,
+          quantity: requestedQty,
+        });
+        const { autoApprove, reason } = decideApproval(results);
+        return autoApprove
+          ? { type: 'approved', reason }
+          : { type: 'user-approval', reason };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return { type: 'user-approval', reason: `Could not validate plan: ${reason}` };
+      }
+    },
+  };
 }
 
 /**
@@ -207,6 +231,21 @@ export function createPurchasingTools(store: Store) {
             error: error instanceof Error ? error.message : String(error),
           };
         }
+      },
+    }),
+
+    escalate_to_buyer: tool({
+      description:
+        'Stop and hand this situation to a human buyer instead of deciding or acting yourself. Use when the situation is ambiguous, evidence conflicts, or the right call depends on judgment/context you do not have (e.g. a supplier shortfall with no clear substitute, or a constraint violation with no safe fallback). This ends your turn — do not call further tools after this.',
+      inputSchema: z.object({
+        reason: z.string().describe('Why this needs a human, in one or two sentences.'),
+        context: z
+          .string()
+          .optional()
+          .describe('Key numbers/findings the buyer needs to pick up where you left off.'),
+      }),
+      execute: async ({ reason, context }) => {
+        return { escalate: true, reason, context };
       },
     }),
   };

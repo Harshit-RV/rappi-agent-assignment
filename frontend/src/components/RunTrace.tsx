@@ -8,6 +8,7 @@ type Props = {
   runId: string | null;
   events: RunEvent[];
   error: string | null;
+  onDecision: (approved: boolean, reason?: string) => void;
 };
 
 function truncate(text: string, max = 280): string {
@@ -35,16 +36,45 @@ function statusLabel(status: RunStatus): string {
       return 'Complete';
     case 'failed':
       return 'Failed';
+    case 'awaiting_approval':
+      return 'Needs approval';
+    case 'escalated':
+      return 'Escalated';
+    case 'rejected':
+      return 'Rejected';
   }
 }
 
-export function RunTrace({ status, runId, events, error }: Props) {
+function formatToolArgsInline(args: unknown): string {
+  if (!args || typeof args !== 'object') return '';
+  return Object.entries(args as Record<string, unknown>)
+    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+    .join(', ');
+}
+
+export function RunTrace({ status, runId, events, error, onDecision }: Props) {
   const listRef = useRef<HTMLOListElement>(null);
   const [eventsOpen, setEventsOpen] = useRunEventsOpen(status);
   const [listOverflows, setListOverflows] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const done = events.find((e) => e.type === 'done');
   const finalText = done?.type === 'done' ? done.summary.finalText : null;
   const isLive = status === 'starting' || status === 'running';
+
+  // Most recent pending approval / escalation still relevant to this run.
+  // A later approval_decided or a fresh approval_requested supersedes it.
+  const latestApprovalRequest = [...events]
+    .reverse()
+    .find((e) => e.type === 'approval_requested');
+  const latestEscalation = [...events].reverse().find((e) => e.type === 'escalation');
+  const pending =
+    status === 'awaiting_approval' && latestApprovalRequest?.type === 'approval_requested'
+      ? latestApprovalRequest.pending
+      : null;
+  const escalation =
+    status === 'escalated' && latestEscalation?.type === 'escalation'
+      ? latestEscalation.escalation
+      : null;
 
   useEffect(() => {
     const list = listRef.current;
@@ -155,6 +185,42 @@ export function RunTrace({ status, runId, events, error }: Props) {
                   </li>
                 );
               }
+              if (event.type === 'approval_requested') {
+                return (
+                  <li key={`approval-req-${index}`} className="event approval-request">
+                    <span className="event-label">gate → needs approval</span>
+                    <strong>{event.pending.toolName}</strong>
+                    <pre>{formatToolArgsInline(event.pending.args)}</pre>
+                    <p>{event.pending.reason}</p>
+                  </li>
+                );
+              }
+              if (event.type === 'approval_decided') {
+                return (
+                  <li
+                    key={`approval-dec-${index}`}
+                    className={
+                      event.approved
+                        ? 'event approval-decision approved'
+                        : 'event approval-decision denied'
+                    }
+                  >
+                    <span className="event-label">
+                      buyer → {event.approved ? 'approved' : 'rejected'}
+                    </span>
+                    {event.reason && <p>{event.reason}</p>}
+                  </li>
+                );
+              }
+              if (event.type === 'escalation') {
+                return (
+                  <li key={`escalation-${index}`} className="event escalation">
+                    <span className="event-label">agent → escalated to buyer</span>
+                    <p>{event.escalation.reason}</p>
+                    {event.escalation.context && <p>{event.escalation.context}</p>}
+                  </li>
+                );
+              }
               if (event.type === 'error') {
                 return (
                   <li key={`err-${index}`} className="event run-error">
@@ -178,6 +244,52 @@ export function RunTrace({ status, runId, events, error }: Props) {
             })}
           </ol>
         </Collapsible>
+      )}
+
+      {pending && (
+        <article className="approval-panel">
+          <p className="eyebrow">Human approval required</p>
+          <h3>{pending.toolName}</h3>
+          <pre className="approval-args">{formatToolArgsInline(pending.args)}</pre>
+          <p className="approval-reason">{pending.reason}</p>
+          <p className="approval-note">
+            The orchestrator blocked this write — validation didn't cleanly pass, so it
+            won't execute without your sign-off.
+          </p>
+          <label className="field">
+            <span className="eyebrow">Note (optional, shown to the agent if rejected)</span>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Use the alternate supplier instead"
+              rows={2}
+            />
+          </label>
+          <div className="approval-actions">
+            <button
+              type="button"
+              className="approve-btn"
+              onClick={() => onDecision(true)}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              className="reject-btn"
+              onClick={() => onDecision(false, rejectReason)}
+            >
+              Reject
+            </button>
+          </div>
+        </article>
+      )}
+
+      {escalation && (
+        <article className="escalation-panel">
+          <p className="eyebrow">Escalated to buyer</p>
+          <p>{escalation.reason}</p>
+          {escalation.context && <p className="muted">{escalation.context}</p>}
+        </article>
       )}
 
       {finalText && (
