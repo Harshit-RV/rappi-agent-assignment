@@ -1,6 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { listScenarioSummaries, loadScenarioFile } from './load-scenario';
-import { Store } from './store';
+import { Store, listScenarioSummaries, loadScenarioFile } from 'erp';
 
 const router = Router();
 

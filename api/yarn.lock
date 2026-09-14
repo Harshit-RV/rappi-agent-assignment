@@ -201,6 +201,7 @@ acorn@^8.11.0, acorn@^8.4.1:
     "@ai-sdk/anthropic" "^4.0.42"
     ai "^7.0.79"
     dotenv "^17.4.2"
+    erp "file:../../../../../var/folders/q9/sm146f2j173bwzm8ws9bq9f80000gn/T/cursor-sandbox-cache/7c03e4470ce7c86fce388392bc58980c/yarn/v6/npm-agent-1.0.0-87539c02-ca91-453b-8ac7-35b971711ba1-1789400616967/node_modules/erp"
     zod "^4.4.3"
 
 ai@^7.0.79:
@@ -378,6 +379,9 @@ encodeurl@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/encodeurl/-/encodeurl-2.0.0.tgz#7b8ea898077d7e409d3ac45474ea38eaf0857a58"
   integrity sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==
+
+"erp@file:../erp":
+  version "1.0.0"
 
 es-define-property@^1.0.1:
   version "1.0.1"
