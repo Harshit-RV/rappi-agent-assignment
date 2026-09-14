@@ -9,6 +9,9 @@ function App() {
 
   return (
     <>
+      <h1 className="text-3xl font-bold underline text-green-500">
+        Hello world!
+      </h1>
       <section id="center">
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
@@ -21,6 +24,7 @@ function App() {
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>
         </div>
+       
         <button
           type="button"
           className="counter"
