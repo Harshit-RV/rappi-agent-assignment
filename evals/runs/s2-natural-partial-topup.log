@@ -1,0 +1,86 @@
+yarn run v1.22.22
+$ tsx scripts/smoke-scenario.ts s2-supplier-shortfall
+◇ injected env (1) from .env // tip: ⌘ enable debugging { debug: true }
+=== Scenario: s2-supplier-shortfall ===
+=== Agent trace ===
+  -> get_purchase_order {"poId":"PO-9001"}
+  -> get_product {"productId":"P-RICE-5KG"}
+  -> get_inventory {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01"}
+  -> get_demand_forecast {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01"}
+  -> get_sales_actuals {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01"}
+  -> list_suppliers {"productId":"P-RICE-5KG"}
+  -> get_budget {}
+  -> list_open_purchase_orders {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01"}
+  <- get_purchase_order ok (0.48579199999949196ms) {"poId":"PO-9001","productId":"P-RICE-5KG","supplierId":"SUP-GRAIN-01","nodeId":"FC-BLR-01","requestedQty":500,"confirmedQty":250,"unitPrice":420,"status":"PARTIALLY_CONFIRMED","expectedArrivalDays":6}
+  <- get_product ok (0.3943329999992784ms) {"productId":"P-RICE-5KG","name":"Basmati Rice 5kg Bag","casePack":10,"unitCost":420,"shelfLifeDays":365}
+  <- get_inventory ok (0.3676660000000993ms) {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","onHand":80,"reserved":20,"safetyStock":60,"available":60}
+  <- get_demand_forecast ok (0.33404199999949924ms) {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","horizonDays":14,"forecastUnits":350,"confidence":0.74}
+  <- get_sales_actuals ok (0.2663329999995767ms) {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","lookbackDays":14,"soldUnits":340,"forecastUnitsForSameWindow":350}
+  <- list_suppliers ok (0.18804099999942991ms) {"suppliers":[{"supplierId":"SUP-GRAIN-01","name":"Karnataka Grain Traders","productId":"P-RICE-5KG","unitPrice":420,"moq":100,"leadTimeDays":6,"availableAllocation":250,"reliabilityScore":0.88},{"supplierId":"SUP-GRAIN-02","name":"Premium ...
+  <- get_budget ok (0.13937499999974534ms) {"periodId":"FY26-Q3","currency":"INR","allocated":150000,"committed":105000,"spent":0,"available":45000}
+  <- list_open_purchase_orders ok (0.08737500000006548ms) {"purchaseOrders":[{"poId":"PO-9001","productId":"P-RICE-5KG","supplierId":"SUP-GRAIN-01","nodeId":"FC-BLR-01","requestedQty":500,"confirmedQty":250,"unitPrice":420,"status":"PARTIALLY_CONFIRMED","expectedArrivalDays":6}],"incomingConfirmed...
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-01","quantity":0}
+  -> get_demand_forecast {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","horizonDays":30}
+  <- validate_plan ok (1.3856250000026193ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 100","actual":"0 (no purchase)","message":"No purchase proposed; MOQ does not apply."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"0","mes...
+  <- get_demand_forecast ok (0.08304100000168546ms) {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","horizonDays":14,"forecastUnits":350,"confidence":0.74}
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","quantity":50}
+  <- validate_plan ok (0.35145899999770336ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 50","actual":"50","message":"50 meets supplier MOQ of 50."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"50","message":"50 is a multiple of...
+  -> create_purchase_order {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","requestedQty":50}
+  <- create_purchase_order ok (0.45012499999575084ms) {"po":{"poId":"PO-1D830DE5","productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","requestedQty":50,"confirmedQty":50,"unitPrice":610,"status":"CONFIRMED","expectedArrivalDays":4},"adjustments":[],"diverged":false,"hint"...
+  [assistant] All checks pass with autoApprove true. This is a modest top-up (50 units at the higher-priced alternate supplier) rather than the full 250-unit gap between requested (500) and confirmed (250), and it fits budget. I'll proceed to create this PO.
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","quantity":0}
+  <- validate_plan ok (0.2120839999988675ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 50","actual":"0 (no purchase)","message":"No purchase proposed; MOQ does not apply."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"0","mess...
+  [assistant] Confirmed as requested (50/50). Now closing the loop with a post-execution validation.
+  [assistant] ## Decision: Modify (partial top-up, not full 250-unit replacement) **Investigation findings:** - PO-9001 (500 units requested from SUP-GRAIN-01) was only confirmed at 250 units — that supplier's *entire* allocation for this product is 250, so it has zero remaining capacity for a top-up. - Demand signal is stable: 14-day forecast = 350 units, actual sales over the same lookback = 340 (essentially ...
+
+=== Run summary ===
+Stop reason: SUCCESS
+Iterations:  6
+Duration:    47.3s
+
+Final answer:
+## Decision: Modify (partial top-up, not full 250-unit replacement)
+
+**Investigation findings:**
+- PO-9001 (500 units requested from SUP-GRAIN-01) was only confirmed at 250 units — that supplier's *entire* allocation for this product is 250, so it has zero remaining capacity for a top-up.
+- Demand signal is stable: 14-day forecast = 350 units, actual sales over the same lookback = 340 (essentially on-forecast, no spike justifying urgency for the full 500).
+- Current available inventory = 60 units (on-hand 80, reserved 20, safety stock target 60).
+- Projected supply with just the 250 confirmed units: 60 + 250 = 310 vs. 350 forecast → a **40-unit gap**, not a 250-unit gap. The original 500-unit order was oversized relative to the 14-day forecast (confirmed by validate_plan's NO_OVERBUY/DEMAND_COVERAGE math).
+- Only alternate supplier is SUP-GRAIN-02: unit price 610 (vs. 420), MOQ 50, lead time 4 days, allocation 400 available.
+- Budget: 45,000 available this period. Buying the full 250-unit shortfall at 610/unit = 152,500 — far exceeds budget, as the scenario predicted. Even the true 40-unit gap can't be ordered directly since SUP-GRAIN-02's MOQ is 50.
+
+**Action taken:**
+- Ordered 50 units (MOQ minimum, case-pack compliant) from SUP-GRAIN-02, costing 30,500 — within the 45,000 budget.
+- create_purchase_order confirmed 50/50 (no divergence) → PO-1D830DE5, status CONFIRMED, arriving in 4 days.
+- Post-execution validate_plan (qty 0) shows all checks pass, autoApprove=true: projected stock 360 vs. 350 forecast (covered), well under the 1.5x overbuy ceiling (525), budget/storage/lead-time all fine.
+
+**Net result:** Combined incoming (250 @ 6 days + 50 @ 4 days) plus current available stock covers the 14-day forecast with a small buffer, at a total incremental cost well inside budget. I did not chase the full 250-unit shortfall because the demand data doesn't support it — the original 500 appears to have been sized generously, and forcing the gap closed at the alternate supplier's price would have blown the budget for no forecast-driven benefit.
+
+**For the human buyer:** No further action required for this cycle. Worth reviewing why PO-9001 was sized at 500 against only a 350-unit/14-day forecast (possibly a longer intended coverage horizon or a stale sizing rule) so future orders are right-sized and don't trigger avoidable shortfall/budget conflicts.
+
+=== Open POs after run ===
+[
+  {
+    "poId": "PO-9001",
+    "productId": "P-RICE-5KG",
+    "supplierId": "SUP-GRAIN-01",
+    "nodeId": "FC-BLR-01",
+    "requestedQty": 500,
+    "confirmedQty": 250,
+    "unitPrice": 420,
+    "status": "PARTIALLY_CONFIRMED",
+    "expectedArrivalDays": 6
+  },
+  {
+    "poId": "PO-1D830DE5",
+    "productId": "P-RICE-5KG",
+    "nodeId": "FC-BLR-01",
+    "supplierId": "SUP-GRAIN-02",
+    "requestedQty": 50,
+    "confirmedQty": 50,
+    "unitPrice": 610,
+    "status": "CONFIRMED",
+    "expectedArrivalDays": 4
+  }
+]
+Done in 47.91s.

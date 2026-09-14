@@ -1,0 +1,88 @@
+yarn run v1.22.22
+$ tsx scripts/smoke-scenario.ts s1-recommendation-review
+◇ injected env (1) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+=== Scenario: s1-recommendation-review ===
+=== Agent trace ===
+  -> get_product {"productId":"P-COKE-500"}
+  -> get_node {"nodeId":"FC-BLR-01"}
+  -> get_inventory {"productId":"P-COKE-500","nodeId":"FC-BLR-01"}
+  -> get_demand_forecast {"productId":"P-COKE-500","nodeId":"FC-BLR-01","horizonDays":14}
+  -> get_sales_actuals {"productId":"P-COKE-500","nodeId":"FC-BLR-01","lookbackDays":14}
+  -> list_open_purchase_orders {"productId":"P-COKE-500","nodeId":"FC-BLR-01"}
+  -> list_suppliers {"productId":"P-COKE-500"}
+  -> get_budget {}
+  <- get_product ok (0.4422079999994821ms) {"productId":"P-COKE-500","name":"Coca-Cola 500ml PET","casePack":24,"unitCost":22,"shelfLifeDays":180}
+  <- get_node ok (0.33550000000013824ms) {"nodeId":"FC-BLR-01","name":"Bangalore FC 01","capacityUnits":1000,"usedUnits":480}
+  <- get_inventory ok (0.3100000000004002ms) {"productId":"P-COKE-500","nodeId":"FC-BLR-01","onHand":120,"reserved":10,"safetyStock":50,"available":110}
+  <- get_demand_forecast ok (0.26970800000071904ms) {"productId":"P-COKE-500","nodeId":"FC-BLR-01","horizonDays":14,"forecastUnits":600,"confidence":0.78}
+  <- get_sales_actuals ok (0.2014580000004571ms) {"productId":"P-COKE-500","nodeId":"FC-BLR-01","lookbackDays":14,"soldUnits":624,"forecastUnitsForSameWindow":600}
+  <- list_open_purchase_orders ok (0.16620899999998073ms) {"purchaseOrders":[{"poId":"PO-4471","productId":"P-COKE-500","supplierId":"SUP-VEND-01","nodeId":"FC-BLR-01","requestedQty":400,"confirmedQty":400,"unitPrice":22,"status":"CONFIRMED","expectedArrivalDays":3}],"incomingConfirmedQty":400}
+  <- list_suppliers ok (0.08354200000030687ms) {"suppliers":[{"supplierId":"SUP-VEND-01","name":"Bharat Beverages Pvt Ltd","productId":"P-COKE-500","unitPrice":22,"moq":96,"leadTimeDays":5,"availableAllocation":5000,"reliabilityScore":0.95},{"supplierId":"SUP-VEND-02","name":"Metro Dist...
+  <- get_budget ok (0.049958999999944353ms) {"periodId":"FY26-Q3","currency":"INR","allocated":50000,"committed":8800,"spent":0,"available":41200}
+  -> validate_plan {"productId":"P-COKE-500","nodeId":"FC-BLR-01","supplierId":"SUP-VEND-01","quantity":800}
+  <- validate_plan ok (0.44466599999941536ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 96","actual":"800","message":"800 meets supplier MOQ of 96."},{"id":"CASE_PACK_MULTIPLE","status":"fail","expected":"multiple of 24","actual":"800","message":"800 is not a mul...
+  -> validate_plan {"productId":"P-COKE-500","nodeId":"FC-BLR-01","supplierId":"SUP-VEND-01","quantity":120}
+  <- validate_plan ok (0.30912499999976717ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 96","actual":"120","message":"120 meets supplier MOQ of 96."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 24","actual":"120","message":"120 is a multipl...
+  -> create_purchase_order {"productId":"P-COKE-500","nodeId":"FC-BLR-01","supplierId":"SUP-VEND-01","requestedQty":120}
+  <- create_purchase_order ok (0.3910840000025928ms) {"po":{"poId":"PO-19653C8F","productId":"P-COKE-500","nodeId":"FC-BLR-01","supplierId":"SUP-VEND-01","requestedQty":120,"confirmedQty":120,"unitPrice":22,"status":"CONFIRMED","expectedArrivalDays":5},"adjustments":[],"diverged":false,"hint"...
+  [assistant] All checks pass and autoApprove is true. Proceeding to create the PO for 120 units with SUP-VEND-01.
+  -> validate_plan {"productId":"P-COKE-500","nodeId":"FC-BLR-01","supplierId":"SUP-VEND-01","quantity":0}
+  <- validate_plan ok (0.15487500000017462ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 96","actual":"0 (no purchase)","message":"No purchase proposed; MOQ does not apply."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 24","actual":"0","mess...
+  [assistant] Confirmed quantity matches requested (120), no divergence. Closing the loop with a post-execution validation.
+  [assistant] ## Decision: modify — placed 120 units instead of the recommended 800 **Why the 800-unit recommendation was wrong:** - **Storage capacity fails:** Node FC-BLR-01 has 1,000 unit capacity, already at 480 used, plus a confirmed 400-unit inbound PO (PO-4471, arriving in 3 days). Adding 800 more would put the node at 1,680 units — 680 over capacity. - **Case pack fails:** 800 is not a multiple of the 2...
+
+=== Run summary ===
+Stop reason: SUCCESS
+Iterations:  6
+Duration:    46.0s
+
+Final answer:
+## Decision: modify — placed 120 units instead of the recommended 800
+
+**Why the 800-unit recommendation was wrong:**
+- **Storage capacity fails:** Node FC-BLR-01 has 1,000 unit capacity, already at 480 used, plus a confirmed 400-unit inbound PO (PO-4471, arriving in 3 days). Adding 800 more would put the node at 1,680 units — 680 over capacity.
+- **Case pack fails:** 800 is not a multiple of the 24-unit case pack; the supplier would silently round it down anyway.
+- **Overbuy warning:** 800 would leave projected stock at 1,310 units vs. a 600-unit 14-day forecast — 2.2x cover, well past the 1.5x overbuy threshold.
+- Demand signal doesn't support a large buy either: sales actuals (624) are only ~4% above forecast (600), not a meaningful trend break.
+
+**Corrected math:**
+- On-hand 120, reserved 10 → available 110; safety stock 50.
+- Incoming: 400 units confirmed, arriving in 3 days.
+- 14-day forecast: 600 (actuals running slightly hot at 624, within noise).
+- Net position without new order: 110 + 400 = 510 vs. demand+safety-stock need (~650-674) → real shortfall is modest, and remaining free storage (1000 - 480 - 400 = 120 units) is the binding constraint.
+- Landed on **120 units** — the largest quantity that (a) fits remaining storage, (b) is a clean multiple of the 24-unit case pack, and (c) clears the 96-unit MOQ.
+
+**Validation:**
+- Pre-flight validate_plan on 800: failed CASE_PACK_MULTIPLE and STORAGE_CAPACITY, plus an overbuy warning (autoApprove=false).
+- Pre-flight validate_plan on 120: all checks passed (autoApprove=true).
+- Created **PO-19653C8F** with SUP-VEND-01 for 120 units — confirmed in full (120/120), no divergence, arriving in 5 days at $22/unit (cost $2,640, well within the $41,200 budget available).
+- Post-execution validate_plan (qty=0) confirms the plan is now clean: storage at capacity (1000/1000 used+incoming), demand coverage 630 vs. 600 forecast, no overbuy, lead time feasible.
+
+**Next steps for a human buyer:** None required — the corrected 120-unit PO is fully confirmed and passes all checks. If sales actuals continue trending above forecast in the next few days, it may be worth re-running the replenishment job sooner than the normal cadence, since remaining headroom at this node is now tight (0 free capacity once the two POs land).
+
+=== Open POs after run ===
+[
+  {
+    "poId": "PO-4471",
+    "productId": "P-COKE-500",
+    "supplierId": "SUP-VEND-01",
+    "nodeId": "FC-BLR-01",
+    "requestedQty": 400,
+    "confirmedQty": 400,
+    "unitPrice": 22,
+    "status": "CONFIRMED",
+    "expectedArrivalDays": 3
+  },
+  {
+    "poId": "PO-19653C8F",
+    "productId": "P-COKE-500",
+    "nodeId": "FC-BLR-01",
+    "supplierId": "SUP-VEND-01",
+    "requestedQty": 120,
+    "confirmedQty": 120,
+    "unitPrice": 22,
+    "status": "CONFIRMED",
+    "expectedArrivalDays": 5
+  }
+]
+Done in 46.54s.

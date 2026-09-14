@@ -230,6 +230,8 @@ Verified:
 
 No scoring harness. Judgment is a readable trace (what was read, decided, validated, what happened after) plus unit tests on the deterministic half.
 
+Four real, unedited run logs plus the full walkthrough against the assignment's six evaluation questions: [evals/README.md](evals/README.md).
+
 **Was the decision correct?**
 
 - Deterministic: `erp` tests and `agent/src/__tests__/purchasing-tools.test.ts` assert validation results and confirmed qty against hand-computed S1/S2 numbers.
@@ -256,8 +258,8 @@ No scoring harness. Judgment is a readable trace (what was read, decided, valida
 
 **What happens when the initial action doesn't work?**
 
-- Shortfall: `createPurchaseOrder` returns `PARTIALLY_CONFIRMED` + `adjustments`. Prompt requires a reaction.
-- Failing plan: [the gate](#human-approval-gate-and-escalation) blocks the write; a human decides. Live check: `--force-pause --approve` / `--reject`.
+- Shortfall: `createPurchaseOrder` returns `PARTIALLY_CONFIRMED` + `adjustments`. Prompt requires a reaction. See `s2-natural-partial-topup.log` in [evals/](evals/README.md).
+- Failing plan: [the gate](#human-approval-gate-and-escalation) blocks the write; a human decides. See `s2-gate-pause-approve.log` and `s2-gate-pause-reject.log` in [evals/](evals/README.md) — the reject case is also where a real stale-decision-text bug was caught and fixed.
 
 ## What's not implemented
 

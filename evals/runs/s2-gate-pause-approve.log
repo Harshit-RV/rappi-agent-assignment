@@ -1,0 +1,85 @@
+yarn run v1.22.22
+$ tsx scripts/smoke-scenario.ts s2-supplier-shortfall --force-pause --approve
+◇ injected env (1) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+=== Scenario: s2-supplier-shortfall ===
+=== Agent trace ===
+  -> get_purchase_order {"poId":"PO-9001"}
+  -> get_product {"productId":"P-RICE-5KG"}
+  -> get_inventory {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01"}
+  -> list_suppliers {"productId":"P-RICE-5KG"}
+  -> get_budget {}
+  <- get_purchase_order ok (0.24412499999925785ms) {"poId":"PO-9001","productId":"P-RICE-5KG","supplierId":"SUP-GRAIN-01","nodeId":"FC-BLR-01","requestedQty":500,"confirmedQty":250,"unitPrice":420,"status":"PARTIALLY_CONFIRMED","expectedArrivalDays":6}
+  <- get_product ok (0.14754100000027393ms) {"productId":"P-RICE-5KG","name":"Basmati Rice 5kg Bag","casePack":10,"unitCost":420,"shelfLifeDays":365}
+  <- get_inventory ok (0.12504100000023755ms) {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","onHand":80,"reserved":20,"safetyStock":60,"available":60}
+  <- list_suppliers ok (0.08920800000032614ms) {"suppliers":[{"supplierId":"SUP-GRAIN-01","name":"Karnataka Grain Traders","productId":"P-RICE-5KG","unitPrice":420,"moq":100,"leadTimeDays":6,"availableAllocation":250,"reliabilityScore":0.88},{"supplierId":"SUP-GRAIN-02","name":"Premium ...
+  <- get_budget ok (0.04175000000032014ms) {"periodId":"FY26-Q3","currency":"INR","allocated":150000,"committed":105000,"spent":0,"available":45000}
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","quantity":250}
+  <- validate_plan ok (0.9721250000002328ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 50","actual":"250","message":"250 meets supplier MOQ of 50."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"250","message":"250 is a multipl...
+  [gate] needs approval -> create_purchase_order: 1 rule(s) failed: BUDGET_AVAILABLE.
+
+=== Run summary ===
+Stop reason: AWAITING_APPROVAL
+Iterations:  3
+Duration:    12.5s
+
+=== Resuming with decision: approve ===
+  -> create_purchase_order {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","requestedQty":250}
+  <- create_purchase_order ok (0.15429200000107812ms) {"po":{"poId":"PO-7D357818","productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","requestedQty":250,"confirmedQty":250,"unitPrice":610,"status":"CONFIRMED","expectedArrivalDays":4},"adjustments":[],"diverged":false,"hin...
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","quantity":0}
+  <- validate_plan ok (0.32695800000146846ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 50","actual":"0 (no purchase)","message":"No purchase proposed; MOQ does not apply."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"0","mess...
+  [assistant] Here's the summary of what happened: **Situation:** PO-9001 (500 units of Basmati Rice 5kg @ ₹420 from SUP-GRAIN-01) was only PARTIALLY_CONFIRMED at 250 units — a 250-unit shortfall against the original request, with 6-day lead time. **Investigation:** - Inventory at FC-BLR-01: 80 on-hand, 20 reserved, 60 safety stock → only 60 truly available. - SUP-GRAIN-01 is capped at 250 allocation (explains ...
+
+=== Run summary ===
+Stop reason: SUCCESS
+Iterations:  2
+Duration:    13.4s
+
+Final answer:
+Here's the summary of what happened:
+
+**Situation:** PO-9001 (500 units of Basmati Rice 5kg @ ₹420 from SUP-GRAIN-01) was only PARTIALLY_CONFIRMED at 250 units — a 250-unit shortfall against the original request, with 6-day lead time.
+
+**Investigation:**
+- Inventory at FC-BLR-01: 80 on-hand, 20 reserved, 60 safety stock → only 60 truly available.
+- SUP-GRAIN-01 is capped at 250 allocation (explains the partial confirm) — no more supply available there.
+- Alternate supplier SUP-GRAIN-02 (Premium Millers Co) had 400 units allocation, 4-day lead time (faster), MOQ 50, but at ₹610/unit (45% premium vs ₹420).
+- Budget: only ₹45,000 remains available this period; 250 units × ₹610 = ₹152,500 — this **fails the BUDGET_AVAILABLE check** by ₹107,500.
+- Pre-flight validate_plan confirmed: MOQ, case pack, storage, demand coverage, supplier allocation, and lead-time all passed; only budget failed (autoApprove=false), plus a NO_OVERBUY warning (projected stock 560 vs demand coverage target 525, i.e., 1.6x forecast).
+
+**Decision: modify (with explicit override)** — I proceeded to top up the 250-unit shortfall via SUP-GRAIN-02 at ₹610/unit despite the budget shortfall, per direct instruction to proceed regardless of budget impact.
+
+**Action taken:** Created PO-7D357818 for 250 units from SUP-GRAIN-02. Confirmed qty = requested qty = 250 (no divergence), status CONFIRMED, 4-day arrival.
+
+**Post-execution validation (qty=0):** All checks now pass, including budget (since spend is already committed/counted as incoming) — only a NO_OVERBUY warning remains (projected stock ~560 vs a 525 target, 1.6x the 14-day forecast).
+
+**What a human buyer should do next:**
+1. **Budget**: This order consumed ₹152,500 against only ₹45,000 remaining in FY26-Q3 — the budget period is now over-committed by ~₹107,500. Buyer should reconcile this with finance/budget owner or request a budget increase for this period.
+2. **Overbuy**: Combined incoming (250 from SUP-GRAIN-01 + 250 from SUP-GRAIN-02 = 500) plus on-hand puts projected stock at 560 units vs a 14-day forecast of 350 (1.6x) — flagged as a mild overbuy. Given 365-day shelf life, this is low-risk, but worth reviewing if demand forecast is trustworthy.
+3. Consider negotiating with SUP-GRAIN-01 to lift their allocation cap for future orders, since their price is 27% cheaper than the backup supplier used here.
+
+=== Open POs after run ===
+[
+  {
+    "poId": "PO-9001",
+    "productId": "P-RICE-5KG",
+    "supplierId": "SUP-GRAIN-01",
+    "nodeId": "FC-BLR-01",
+    "requestedQty": 500,
+    "confirmedQty": 250,
+    "unitPrice": 420,
+    "status": "PARTIALLY_CONFIRMED",
+    "expectedArrivalDays": 6
+  },
+  {
+    "poId": "PO-7D357818",
+    "productId": "P-RICE-5KG",
+    "nodeId": "FC-BLR-01",
+    "supplierId": "SUP-GRAIN-02",
+    "requestedQty": 250,
+    "confirmedQty": 250,
+    "unitPrice": 610,
+    "status": "CONFIRMED",
+    "expectedArrivalDays": 4
+  }
+]
+Done in 26.49s.

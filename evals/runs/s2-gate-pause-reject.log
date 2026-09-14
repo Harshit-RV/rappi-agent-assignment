@@ -1,0 +1,59 @@
+yarn run v1.22.22
+$ tsx scripts/smoke-scenario.ts s2-supplier-shortfall --force-pause --reject
+◇ injected env (1) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+=== Scenario: s2-supplier-shortfall ===
+=== Agent trace ===
+  -> get_purchase_order {"poId":"PO-9001"}
+  -> list_suppliers {"productId":"P-RICE-5KG"}
+  -> get_budget {}
+  <- get_purchase_order ok (0.4112910000003467ms) {"poId":"PO-9001","productId":"P-RICE-5KG","supplierId":"SUP-GRAIN-01","nodeId":"FC-BLR-01","requestedQty":500,"confirmedQty":250,"unitPrice":420,"status":"PARTIALLY_CONFIRMED","expectedArrivalDays":6}
+  <- list_suppliers ok (0.18837500000017826ms) {"suppliers":[{"supplierId":"SUP-GRAIN-01","name":"Karnataka Grain Traders","productId":"P-RICE-5KG","unitPrice":420,"moq":100,"leadTimeDays":6,"availableAllocation":250,"reliabilityScore":0.88},{"supplierId":"SUP-GRAIN-02","name":"Premium ...
+  <- get_budget ok (0.08245900000019901ms) {"periodId":"FY26-Q3","currency":"INR","allocated":150000,"committed":105000,"spent":0,"available":45000}
+  -> validate_plan {"productId":"P-RICE-5KG","nodeId":"FC-BLR-01","supplierId":"SUP-GRAIN-02","quantity":250}
+  <- validate_plan ok (1.4211669999995138ms) {"results":[{"id":"MOQ_SATISFIED","status":"pass","expected":">= 50","actual":"250","message":"250 meets supplier MOQ of 50."},{"id":"CASE_PACK_MULTIPLE","status":"pass","expected":"multiple of 10","actual":"250","message":"250 is a multipl...
+  [gate] needs approval -> create_purchase_order: 1 rule(s) failed: BUDGET_AVAILABLE.
+
+=== Run summary ===
+Stop reason: AWAITING_APPROVAL
+Iterations:  3
+Duration:    11.9s
+
+=== Resuming with decision: reject ===
+  [assistant] **Outcome: investigate further / escalate — execution blocked by budget gate.** Findings: - **PO-9001** (SUP-GRAIN-01, 500 requested) came back **PARTIALLY_CONFIRMED at 250 units** — a real 250-unit shortfall against the original request. - Second supplier **SUP-GRAIN-02** (Premium Millers Co) can cover the gap: MOQ 50, case pack OK, lead time 4 days, allocation 400 available, reliability 0.91 — b...
+
+=== Run summary ===
+Stop reason: SUCCESS
+Iterations:  1
+Duration:    11.5s
+
+Final answer:
+**Outcome: investigate further / escalate — execution blocked by budget gate.**
+
+Findings:
+- **PO-9001** (SUP-GRAIN-01, 500 requested) came back **PARTIALLY_CONFIRMED at 250 units** — a real 250-unit shortfall against the original request.
+- Second supplier **SUP-GRAIN-02** (Premium Millers Co) can cover the gap: MOQ 50, case pack OK, lead time 4 days, allocation 400 available, reliability 0.91 — but at **₹610/unit vs. ₹420/unit** from the original supplier (+45% cost).
+- Pre-flight `validate_plan` for 250 units from SUP-GRAIN-02 passed every operational check (MOQ, case pack, storage, demand coverage, lead time, supplier allocation) but **failed BUDGET_AVAILABLE**: cost of ₹152,500 vs. only ₹45,000 remaining in the FY26-Q3 purchasing budget (shortfall of ₹107,500). It also flagged a NO_OVERBUY warning (projected stock would be 1.6x the 14-day forecast).
+- Because BUDGET_AVAILABLE failed, `autoApprove` was `false`, and the system correctly **denied execution** of `create_purchase_order` — it requires human sign-off, and I did not attempt to override it.
+
+Decision: **investigate further / escalate to buyer** — I'm stopping here rather than forcing the order through, since a budget breach of this size is a judgment call, not something I should push through myself.
+
+What a human buyer should do next:
+1. Confirm whether the 250-unit shortfall from SUP-GRAIN-01 is truly urgent enough to justify paying a 45% price premium (₹152,500 vs. the ₹105,000 it would have cost at the original ₹420 price), given current stock covers ~12.4 days of demand and the supplier's 4-day lead time.
+2. Decide whether to (a) approve a budget exception/reallocate ~₹107,500 from another line to cover SUP-GRAIN-02 at 250 units, (b) reduce the order quantity to fit the ₹45,000 available budget (~73 units at ₹610, rounded to case pack of 10 → 70 units), or (c) wait for SUP-GRAIN-01's next allocation cycle instead of paying the premium.
+3. If approved, I can re-run `validate_plan`/`create_purchase_order` with the approved quantity/supplier and close the loop with a post-execution validation (quantity 0) to confirm no other issues remain.
+
+=== Open POs after run ===
+[
+  {
+    "poId": "PO-9001",
+    "productId": "P-RICE-5KG",
+    "supplierId": "SUP-GRAIN-01",
+    "nodeId": "FC-BLR-01",
+    "requestedQty": 500,
+    "confirmedQty": 250,
+    "unitPrice": 420,
+    "status": "PARTIALLY_CONFIRMED",
+    "expectedArrivalDays": 6
+  }
+]
+Done in 23.98s.
