@@ -57,8 +57,13 @@ export function RunTrace({ status, runId, events, error, onDecision }: Props) {
   const [eventsOpen, setEventsOpen] = useRunEventsOpen(status);
   const [listOverflows, setListOverflows] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const done = events.find((e) => e.type === 'done');
-  const finalText = done?.type === 'done' ? done.summary.finalText : null;
+  // Last done, not first — a resumed run appends a second done with the
+  // real outcome after the pre-approval pause's done (which is just intent).
+  // A rejection never resumes, so its only done is that stale pre-approval
+  // intent — there is no real final text for a rejected run, show none.
+  const done = [...events].reverse().find((e) => e.type === 'done');
+  const isTerminal = status === 'completed' || status === 'escalated';
+  const finalText = isTerminal && done?.type === 'done' ? done.summary.finalText : null;
   const isLive = status === 'starting' || status === 'running';
 
   // Most recent pending approval / escalation still relevant to this run.
@@ -74,6 +79,10 @@ export function RunTrace({ status, runId, events, error, onDecision }: Props) {
   const escalation =
     status === 'escalated' && latestEscalation?.type === 'escalation'
       ? latestEscalation.escalation
+      : null;
+  const rejection =
+    status === 'rejected'
+      ? [...events].reverse().find((e) => e.type === 'approval_decided' && !e.approved)
       : null;
 
   useEffect(() => {
@@ -289,6 +298,15 @@ export function RunTrace({ status, runId, events, error, onDecision }: Props) {
           <p className="eyebrow">Escalated to buyer</p>
           <p>{escalation.reason}</p>
           {escalation.context && <p className="muted">{escalation.context}</p>}
+        </article>
+      )}
+
+      {rejection && rejection.type === 'approval_decided' && (
+        <article className="escalation-panel">
+          <p className="eyebrow">Outcome</p>
+          <h3>Request rejected</h3>
+          <p>Nothing was written — the plan was blocked before it could execute.</p>
+          {rejection.reason && <p className="muted">{rejection.reason}</p>}
         </article>
       )}
 
