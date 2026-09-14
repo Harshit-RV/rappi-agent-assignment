@@ -1,6 +1,6 @@
 # AI Purchasing Agent
 
-Full-stack purchasing agent for the Rappi take-home ([Assignment.pdf](Assignment.pdf)).
+Full-stack purchasing agent for the Rappi take-home assignment.
 
 Given a recommendation, the agent:
 
@@ -81,7 +81,7 @@ agent/       runAgent loop, purchasing tools, system prompt, approval gate
 api/         Express app, run registry + SSE, scenario routes
 frontend/    Vite + React console
 data/        scenarios/*.json (mock ERP seeds)
-Assignment.pdf
+evals/       real run logs + evaluation write-up
 ```
 
 ## Setup and run
