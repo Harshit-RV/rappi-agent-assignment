@@ -6,7 +6,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
-    "scenario:dump": "ts-node scripts/scenario-dump.ts"
+    "scenario:dump": "ts-node scripts/scenario-dump.ts",
+    "test": "node --require ts-node/register --test src/**/__tests__/**/*.test.ts"
   },
   "engines": {
     "node": ">=24"
