@@ -13,32 +13,32 @@ function paramId(value: string | string[]): string {
   return Array.isArray(value) ? (value[0] ?? '') : value;
 }
 
-
 router.post('/', (req: Request, res: Response) => {
-  const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
+  const scenarioId =
+    typeof req.body?.scenarioId === 'string' ? req.body.scenarioId : '';
+  const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : undefined;
 
   try {
-    const run = startRun({ prompt });
-    res.status(202).json({ runId: run.id });
+    const run = startRun({ scenarioId, prompt });
+    res.status(202).json({ runId: run.id, scenarioId: run.scenarioId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    res.status(400).json({ error: message });
+    const status = message.includes('not found') ? 404 : 400;
+    res.status(status).json({ error: message });
   }
 });
 
-
-/** GET /api/runs/:id — snapshot for reconnects / polling */
+// GET /api/runs/:id — snapshot for reconnects / polling
 router.get('/:id', (req: Request, res: Response) => {
   const run = registry.getRun(paramId(req.params.id));
-  
+
   if (!run) {
     res.status(404).json({ error: 'run not found' });
     return;
   }
-  
+
   res.json(run);
 });
-
 
 /**
  * GET /api/runs/:id/events — Server-Sent Events.

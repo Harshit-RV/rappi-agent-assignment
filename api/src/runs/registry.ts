@@ -6,9 +6,10 @@ type Subscriber = (event: RunEvent) => void;
 const runs = new Map<string, RunRecord>();
 const subscribers = new Map<string, Set<Subscriber>>();
 
-export function createRun(input: CreateRunInput): RunRecord {
+export function createRun(input: CreateRunInput & { prompt: string }): RunRecord {
   const run: RunRecord = {
     id: randomUUID(),
+    scenarioId: input.scenarioId,
     prompt: input.prompt,
     status: 'running',
     createdAt: Date.now(),

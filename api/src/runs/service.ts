@@ -1,22 +1,26 @@
-import { runAgent } from 'agent';
+import { loadScenarioFile } from 'erp';
+import { buildScenarioPrompt, runPurchasingScenario } from 'agent';
 import * as registry from './registry';
 import type { CreateRunInput, RunRecord } from './types';
 
-/**
- * Creates a run record and kicks off the agent in the background.
- * Observer callbacks become RunEvents on the registry (and SSE stream).
- */
+// Creates a run record and kicks off the purchasing agent in the background.
 export function startRun(input: CreateRunInput): RunRecord {
-  const prompt = input.prompt.trim();
-  if (!prompt) {
-    throw new Error('prompt is required');
+  const scenarioId = input.scenarioId.trim();
+  if (!scenarioId) {
+    throw new Error('scenarioId is required');
   }
 
-  const run = registry.createRun({ prompt });
+  const scenario = loadScenarioFile(scenarioId);
+  const prompt = buildScenarioPrompt(scenario, input.prompt);
 
-  // Fire-and-forget: the HTTP response already returned { runId }.
-  void runAgent({
+  const run = registry.createRun({
+    scenarioId: scenario.id,
     prompt,
+  });
+
+  void runPurchasingScenario({
+    scenarioId: scenario.id,
+    prompt: input.prompt,
     on: {
       onToolCall: (call) => {
         registry.appendEvent(run.id, {
@@ -55,7 +59,7 @@ export function startRun(input: CreateRunInput): RunRecord {
     },
   }).catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    
+
     registry.appendEvent(run.id, {
       type: 'error',
       at: Date.now(),

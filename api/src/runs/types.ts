@@ -19,6 +19,7 @@ export type RunEvent =
 
 export type RunRecord = {
   id: string;
+  scenarioId: string;
   prompt: string;
   status: RunStatus;
   createdAt: number;
@@ -28,7 +29,9 @@ export type RunRecord = {
 };
 
 export type CreateRunInput = {
-  prompt: string;
+  scenarioId: string;
+  // Optional extra buyer instructions appended to the scenario prompt.
+  prompt?: string;
 };
 
 export type { ToolCall, ToolResult, AgentRunSummary };
