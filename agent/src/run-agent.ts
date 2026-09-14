@@ -1,9 +1,8 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText, stepCountIs } from 'ai';
-import { createTools } from './tools/tools.js';
 import config from './config/index.js';
 import { AgentRunSummary, RunAgentOptions } from './types.js';
-import { SYSTEM_PROMPT } from './prompt.js';
+import { PURCHASING_SYSTEM_PROMPT } from './prompt.js';
 
 const MAX_ITERATIONS = 20;
 const MAX_WALL_CLOCK_MS = 3 * 60 * 1000;
@@ -14,6 +13,12 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunSummar
 
   if (!config.anthropicApiKey) {
     throw new Error('ANTHROPIC_API_KEY is missing. Copy .env.example to .env and set it.');
+  }
+
+  if (!options.tools) {
+    throw new Error(
+      'tools are required. Pass createPurchasingTools(store) or use runPurchasingScenario().'
+    );
   }
 
   let timedOut = false;
@@ -30,9 +35,9 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunSummar
 
     const result = await generateText({
       model: anthropic(config.anthropicModel),
-      instructions: SYSTEM_PROMPT,
+      instructions: options.instructions ?? PURCHASING_SYSTEM_PROMPT,
       prompt: options.prompt,
-      tools: createTools(),
+      tools: options.tools,
       stopWhen: stepCountIs(MAX_ITERATIONS),
       abortSignal: controller.signal,
 

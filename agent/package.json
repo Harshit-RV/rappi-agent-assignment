@@ -7,15 +7,17 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "smoke": "tsx scripts/smoke-agent.ts",
-    "dev": "tsx src/index.ts"
+    "test": "node --import tsx --test src/**/__tests__/**/*.test.ts",
+    "smoke": "tsx scripts/smoke-scenario.ts",
+    "smoke:scenario": "tsx scripts/smoke-scenario.ts"
   },
   "license": "ISC",
-  "description": "",
+  "description": "Purchasing agent loop, tools, and prompts",
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.42",
     "ai": "^7.0.79",
     "dotenv": "^17.4.2",
+    "erp": "file:../erp",
     "zod": "^4.4.3"
   },
   "devDependencies": {
